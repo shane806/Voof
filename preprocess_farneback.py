@@ -12,7 +12,7 @@ def generate_frames(mp4_path):
     _, prev_frame = video.read()
     for t in count():
         ret, curr_frame = video.read()
-        if ret == False:
+        if not ret:
             break
         yield prev_frame, curr_frame
         prev_frame = curr_frame
