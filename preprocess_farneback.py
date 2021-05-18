@@ -32,18 +32,20 @@ def generate_frames(mp4_path):
     cv2.destroyAllWindows()
 
 
-def change_brightness(image, bright_factor):
+def change_brightness(gpuFrame, bright_factor):
     """augment brightness"""
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    
+    hsv_gpu = cv2.cuda.cvtColor(gpuFrame, cv2.COLOR_BGR2HSV)
+    hsv_image = hsv_gpu.download()
     hsv_image[:,:,2] = hsv_image[:,:,2] * bright_factor
     image_rgb = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2BGR)
-    return image_rgb
+    return gpuFrame.upload(image_rgb)
 
 
 def transform(image, bright_factor):
     """augment brightness, crop/resize"""
     image = change_brightness(image, bright_factor)
-    image = cv2.resize(image[100:440, :-90], (220, 66), interpolation = cv2.INTER_AREA)
+    image = cv2.cuda.resize(image[100:440, :-90], (220, 66), interpolation = cv2.INTER_AREA)
     return image
 
 
@@ -64,9 +66,9 @@ def calc_dense_optical_flow(prev_frame, curr_frame, bright_factor):
 
 def generate_optical_flow_dataset(mp4_path, text_path):
     """generate dataset from mp4 and txt"""
-    for t, (prev_frame, curr_frame) in enumerate(tqdm(generate_frames(mp4_path), desc='Generating dense optical flow tensors')):
+    for t, (prev_gpuFrame, curr_gpuFrame) in enumerate(tqdm(generate_frames(mp4_path), desc='Generating dense optical flow tensors')):
         bright_factor = 0.2 + np.random.uniform()
-        rgb_flow = calc_dense_optical_flow(prev_frame, curr_frame, bright_factor)
+        rgb_flow = calc_dense_optical_flow(prev_gpuFrame, curr_gpuFrame, bright_factor)
         rgb_flow_tensor = T.ToTensor()(rgb_flow).unsqueeze(0)
         if t == 0:
             flow_stack = rgb_flow_tensor
