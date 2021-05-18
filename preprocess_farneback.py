@@ -9,13 +9,25 @@ from tqdm import tqdm
 def generate_frames(mp4_path):
     # (height, width, number_of_channels) = (480, 640, 3)
     video = cv2.VideoCapture(mp4_path)
+    
+    prev_gpuFrame = cv2.cuda_GpuMat()
+    curr_gpuFrame = cv2.cuda_GpuMat()
+    
     _, prev_frame = video.read()
+    
     for t in count():
+        
         ret, curr_frame = video.read()
         if not ret:
             break
-        yield prev_frame, curr_frame
+            
+        prev_gpuFrame.upload(prev_frame)
+        curr_gpuFrame.upload(curr_frame)
+        
+        yield prev_gpuFrame, curr_gpuFrame
+        
         prev_frame = curr_frame
+        
     video.release()
     cv2.destroyAllWindows()
 
